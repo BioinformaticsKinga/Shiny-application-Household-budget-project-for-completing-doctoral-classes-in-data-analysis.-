@@ -1,24 +1,24 @@
-library(shiny)
-library(ggplot2)
-library(dplyr)
-library(lubridate)
+library(shiny)  # Framework for building interactive web applications in R
+library(ggplot2)  # For data visualization
+library(dplyr)  # For data manipulation
+library(lubridate)  # For working with date objects
 
-# Files for storing data
+# File paths for storing financial data
 expenses_file <- "expenses.csv"
 income_file <- "income.csv"
 goals_file <- "savings_goals.csv"
 
-# Function to load data from a file
+# Function to load data from a file or create an empty dataframe if the file does not exist
 load_data <- function(file, default_data) {
   if (file.exists(file)) {
     read.csv(file, stringsAsFactors = FALSE) %>%
-      mutate(Data = as.Date(Data))
+      mutate(Data = as.Date(Data))  # Convert date column to Date format
   } else {
     default_data
   }
 }
 
-# UI of the application
+# UI (User Interface) of the application
 ui <- fluidPage(
   titlePanel("Home Budget - Financial Management"),
   
@@ -64,10 +64,10 @@ ui <- fluidPage(
   )
 )
 
-# Server logic for the application
+# Server logic for handling data processing
 server <- function(input, output, session) {
-
-  # Reactive values for data
+  
+  # Reactive variables to store financial data
   expenses_data <- reactiveVal(load_data(expenses_file, data.frame(
     Data = as.Date(character()),
     Kategoria = character(),
@@ -87,20 +87,16 @@ server <- function(input, output, session) {
     Osiągnięto = numeric(),
     stringsAsFactors = FALSE
   )))
-
-  # Function to save data to a file
+  
+  # Function to save data back to CSV files
   save_data <- function(data, file) {
     write.csv(data, file, row.names = FALSE)
   }
 
-  # Add new income event
+  # Event listener for adding income
   observeEvent(input$add_income, {
     if (input$income_amount > 0) {
-      new_income <- data.frame(
-        Data = input$income_date,
-        Kwota = input$income_amount,
-        stringsAsFactors = FALSE
-      )
+      new_income <- data.frame(Data = input$income_date, Kwota = input$income_amount, stringsAsFactors = FALSE)
       updated_income <- rbind(income_data(), new_income)
       income_data(updated_income)
       save_data(updated_income, income_file)
@@ -108,16 +104,11 @@ server <- function(input, output, session) {
       showNotification("Income amount must be greater than 0.", type = "error")
     }
   })
-
-  # Add new expense event
+  
+  # Event listener for adding an expense
   observeEvent(input$add, {
     if (input$amount > 0) {
-      new_expense <- data.frame(
-        Data = input$date,
-        Kategoria = input$category,
-        Kwota = input$amount,
-        stringsAsFactors = FALSE
-      )
+      new_expense <- data.frame(Data = input$date, Kategoria = input$category, Kwota = input$amount, stringsAsFactors = FALSE)
       updated_expenses <- rbind(expenses_data(), new_expense)
       expenses_data(updated_expenses)
       save_data(updated_expenses, expenses_file)
@@ -126,15 +117,10 @@ server <- function(input, output, session) {
     }
   })
 
-  # Add new savings goal event
+  # Event listener for adding a savings goal
   observeEvent(input$add_goal, {
     if (input$goal_amount > 0 & input$goal_name != "") {
-      new_goal <- data.frame(
-        Cel = input$goal_name,
-        Kwota = input$goal_amount,
-        Osiągnięto = 0,
-        stringsAsFactors = FALSE
-      )
+      new_goal <- data.frame(Cel = input$goal_name, Kwota = input$goal_amount, Osiągnięto = 0, stringsAsFactors = FALSE)
       updated_goals <- rbind(savings_goals(), new_goal)
       savings_goals(updated_goals)
       save_data(updated_goals, goals_file)
@@ -143,7 +129,7 @@ server <- function(input, output, session) {
     }
   })
 
-  # Reset all data event
+  # Reset all stored data
   observeEvent(input$reset, {
     expenses_data(data.frame(Data = as.Date(character()), Kategoria = character(), Kwota = numeric(), stringsAsFactors = FALSE))
     income_data(data.frame(Data = as.Date(character()), Kwota = numeric(), stringsAsFactors = FALSE))
@@ -153,57 +139,21 @@ server <- function(input, output, session) {
     save_data(income_data(), income_file)
     save_data(savings_goals(), goals_file)
   })
-
-  # Output for total income
-  output$totalIncome <- renderText({
-    total_income <- sum(income_data()$Kwota, na.rm = TRUE)
-    paste("Total Income:", total_income, "PLN")
-  })
-
-  # Output for total expenses
-  output$totalExpenses <- renderText({
-    total_expenses <- sum(expenses_data()$Kwota, na.rm = TRUE)
-    paste("Total Expenses:", total_expenses, "PLN")
-  })
-
-  # Output for savings
-  output$savings <- renderText({
-    total_income <- sum(income_data()$Kwota, na.rm = TRUE)
-    total_expenses <- sum(expenses_data()$Kwota, na.rm = TRUE)
-    savings <- total_income - total_expenses
-    paste("Savings:", savings, "PLN")
-  })
-
-  # Plot for daily expenses
+  
+  # Calculate total income, expenses, and savings
+  output$totalIncome <- renderText({ paste("Total Income:", sum(income_data()$Kwota, na.rm = TRUE), "PLN") })
+  output$totalExpenses <- renderText({ paste("Total Expenses:", sum(expenses_data()$Kwota, na.rm = TRUE), "PLN") })
+  output$savings <- renderText({ paste("Savings:", sum(income_data()$Kwota, na.rm = TRUE) - sum(expenses_data()$Kwota, na.rm = TRUE), "PLN") })
+  
+  # Generate plots for expenses
   output$dailyPlot <- renderPlot({
     if (nrow(expenses_data()) == 0) return(NULL)
-    daily_data <- expenses_data() %>%
-      group_by(Data) %>%
-      summarize(Suma = sum(Kwota))
-    ggplot(daily_data, aes(x = Data, y = Suma)) +
+    ggplot(expenses_data() %>% group_by(Data) %>% summarize(Suma = sum(Kwota)), aes(x = Data, y = Suma)) +
       geom_bar(stat = "identity", fill = "#3498db") +
       theme_minimal() +
       labs(title = "Daily Expense Distribution", x = "Date", y = "Amount (PLN)")
   })
-
-  # Plot for category-wise expenses
-  output$categoryPlot <- renderPlot({
-    if (nrow(expenses_data()) == 0) return(NULL)
-    category_data <- expenses_data() %>%
-      group_by(Kategoria) %>%
-      summarize(Suma = sum(Kwota))
-    ggplot(category_data, aes(x = Kategoria, y = Suma, fill = Kategoria)) +
-      geom_bar(stat = "identity") +
-      theme_minimal() +
-      labs(title = "Expense Breakdown by Category", x = "Category", y = "Amount (PLN)") +
-      theme(legend.position = "none")
-  })
-
-  # Output for savings goals table
-  output$goalsTable <- renderTable({
-    savings_goals()
-  })
 }
 
-# Run the shiny app
+# Run the Shiny application
 shinyApp(ui, server)
