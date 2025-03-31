@@ -1,4 +1,4 @@
-# Household Budget Management Shiny Application
+# Household Budget Management Shiny Application (in Polish, in some projects for crediting a subject in phD studies)
 Project Overview
 This project implements a Shiny application designed to manage a household budget. The application allows users to track their income, expenses, and savings goals. Users can input data for different categories of expenses (e.g., bills, food, transportation) and visualize the distribution of their spending and savings over time. The application is intuitive and easy to use, offering a simple way to manage personal finances effectively.
 
