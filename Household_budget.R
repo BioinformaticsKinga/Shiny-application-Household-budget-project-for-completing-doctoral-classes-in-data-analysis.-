@@ -3,12 +3,10 @@ library(ggplot2)  # For data visualization
 library(dplyr)  # For data manipulation
 library(lubridate)  # For working with date objects
 
-# File paths for storing financial data
 expenses_file <- "expenses.csv"
 income_file <- "income.csv"
 goals_file <- "savings_goals.csv"
 
-# Function to load data from a file or create an empty dataframe if the file does not exist
 load_data <- function(file, default_data) {
   if (file.exists(file)) {
     read.csv(file, stringsAsFactors = FALSE) %>%
@@ -64,7 +62,6 @@ ui <- fluidPage(
   )
 )
 
-# Server logic for handling data processing
 server <- function(input, output, session) {
   
   # Reactive variables to store financial data
@@ -145,7 +142,6 @@ server <- function(input, output, session) {
   output$totalExpenses <- renderText({ paste("Total Expenses:", sum(expenses_data()$Kwota, na.rm = TRUE), "PLN") })
   output$savings <- renderText({ paste("Savings:", sum(income_data()$Kwota, na.rm = TRUE) - sum(expenses_data()$Kwota, na.rm = TRUE), "PLN") })
   
-  # Generate plots for expenses
   output$dailyPlot <- renderPlot({
     if (nrow(expenses_data()) == 0) return(NULL)
     ggplot(expenses_data() %>% group_by(Data) %>% summarize(Suma = sum(Kwota)), aes(x = Data, y = Suma)) +
